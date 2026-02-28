@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Sky Captain Jr.</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', 'Arial Rounded MT Bold', Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #wrapper {
+      width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      position: relative;
+    }
+
+    #gameCanvas {
+      display: block;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+
+    /* Scale canvas to fill viewport while keeping 16:9 */
+    @media (max-aspect-ratio: 16/9) {
+      #gameCanvas { width: 100vw; height: auto; }
+    }
+    @media (min-aspect-ratio: 16/9) {
+      #gameCanvas { height: 100vh; width: auto; }
+    }
+
+    /* ── D-pad ──────────────────────────────────── */
+    #controls {
+      position: absolute;
+      right: 3.5%;
+      bottom: 5%;
+      display: none; /* shown only during gameplay */
+      grid-template-columns: 70px 70px 70px;
+      grid-template-rows: 70px 70px;
+      gap: 8px;
+      user-select: none;
+      z-index: 10;
+    }
+
+    .ctrl-btn {
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      border: 2.5px solid rgba(255,255,255,0.45);
+      font-size: 22px;
+      font-weight: bold;
+      color: rgba(255,255,255,0.9);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: background 0.08s, transform 0.08s;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .ctrl-btn:active, .ctrl-btn.pressed {
+      background: rgba(255,255,255,0.42);
+      transform: scale(0.90);
+    }
+
+    #btn-up    { grid-column: 2; grid-row: 1; }
+    #btn-left  { grid-column: 1; grid-row: 2; }
+    #btn-down  { grid-column: 2; grid-row: 2; }
+    #btn-right { grid-column: 3; grid-row: 2; }
+
+    /* ── Sound toggle ───────────────────────────── */
+    #btn-sound {
+      position: absolute;
+      top: 14px; right: 14px;
+      background: rgba(0,0,0,0.45);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 22px;
+      cursor: pointer;
+      font-size: 20px;
+      display: none;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      transition: background 0.15s;
+    }
+    #btn-sound:hover { background: rgba(0,0,0,0.65); }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+    <!-- D-pad controls (visible during gameplay) -->
+    <div id="controls">
+      <button class="ctrl-btn" id="btn-up">▲</button>
+      <button class="ctrl-btn" id="btn-left">◀</button>
+      <button class="ctrl-btn" id="btn-down">▼</button>
+      <button class="ctrl-btn" id="btn-right">▶</button>
+    </div>
+
+    <button id="btn-sound">🔊</button>
+  </div>
+
+  <!-- Load order matters: renderer.js defines CANVAS_W/H/ctx globals used by later scripts -->
+  <script src="audio.js"></script>
+  <script src="input.js"></script>
+  <script src="levels.js"></script>
+  <script src="planes.js"></script>
+  <script src="renderer.js"></script>
+  <script src="obstacles.js"></script>
+  <script src="hud.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
