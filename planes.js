@@ -102,6 +102,20 @@ const AIRLINES = {
     engineColor: '#888',
     beltColor: '#4B1869',
     accentColor: '#F5A800'
+  },
+  airIndia: {
+    key: 'airIndia',
+    name: 'Air India',
+    tagline: "The Maharaja's Way",
+    cardBg: ['#83003E', '#4A0022'],
+    fuselageTop: '#f8f8f8',
+    fuselageMid: '#eeeeee',
+    fuselageBot: '#cccccc',
+    wingTop: '#d8d8d8',
+    wingBot: '#909090',
+    tailColor: '#83003E',
+    engineColor: '#888',
+    accentColor: '#FF9933'
   }
 };
 
@@ -392,6 +406,7 @@ function _drawLivery(ctx, al) {
     case 'american':   _liveryAmerican(ctx, al);   break;
     case 'jetblue':    _liveryJetBlue(ctx, al);    break;
     case 'hawaiian':   _liveryHawaiian(ctx, al);   break;
+    case 'airIndia':   _liveryAirIndia(ctx, al);   break;
   }
   ctx.restore();
 }
@@ -481,6 +496,25 @@ function _liveryHawaiian(ctx, al) {
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 12px Georgia';
   ctx.fillText('HAWAIIAN', -38, -5);
+}
+
+function _liveryAirIndia(ctx, al) {
+  // Saffron orange cheatline (window belt)
+  ctx.fillStyle = al.accentColor;
+  ctx.fillRect(-120, -13, 246, 5);
+
+  // Burgundy lower belly band
+  ctx.fillStyle = al.tailColor;
+  ctx.fillRect(-120, 5, 246, 11);
+
+  // Thin gold separator line
+  ctx.fillStyle = '#C8A000';
+  ctx.fillRect(-120, 3, 246, 2);
+
+  // "AIR INDIA" lettering
+  ctx.fillStyle = al.tailColor;
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('AIR INDIA', -36, -2);
 }
 
 function _drawTailLogo(ctx, al) {
@@ -581,6 +615,32 @@ function _drawTailLogo(ctx, al) {
       ctx.moveTo(0, -ts * 0.22);
       ctx.bezierCurveTo(-ts * 0.4, 0, -ts * 0.35, ts * 0.5, ts * 0.05, ts * 0.7);
       ctx.bezierCurveTo(ts * 0.4, ts * 0.5, ts * 0.3, 0, 0, -ts * 0.22);
+      ctx.fill();
+      break;
+    }
+    case 'airIndia': {
+      // Konark Chakra — outer ring
+      ctx.strokeStyle = al.accentColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.72, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner ring
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.35, 0, Math.PI * 2);
+      ctx.stroke();
+      // 8 spokes
+      for (let s = 0; s < 8; s++) {
+        const ang = (s / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * ts * 0.35, Math.sin(ang) * ts * 0.35);
+        ctx.lineTo(Math.cos(ang) * ts * 0.72, Math.sin(ang) * ts * 0.72);
+        ctx.stroke();
+      }
+      // Center dot
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = al.accentColor;
       ctx.fill();
       break;
     }
