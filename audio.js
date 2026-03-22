@@ -152,6 +152,34 @@ const Audio = (function () {
     src.start();
   }
 
+  function playLanding() {
+    const c = getCtx();
+    // Low rumble (noise through lowpass)
+    const bufLen = Math.floor(c.sampleRate * 0.5);
+    const buf = c.createBuffer(1, bufLen, c.sampleRate);
+    const d   = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    const flt = c.createBiquadFilter();
+    const g   = c.createGain();
+    src.buffer = buf;
+    flt.type = 'lowpass'; flt.frequency.value = 200;
+    g.gain.setValueAtTime(0.4, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.5);
+    src.connect(flt); flt.connect(g); g.connect(c.destination);
+    src.start();
+    // Descending tone for touchdown feel
+    const osc = c.createOscillator();
+    const og  = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, c.currentTime);
+    osc.frequency.linearRampToValueAtTime(100, c.currentTime + 0.3);
+    og.gain.setValueAtTime(0.15, c.currentTime);
+    og.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.35);
+    osc.connect(og); og.connect(c.destination);
+    osc.start(); osc.stop(c.currentTime + 0.4);
+  }
+
   // ── Engine hum (continuous) ────────────────────────────────────────────────
 
   function startEngine() {
@@ -264,6 +292,7 @@ const Audio = (function () {
           case 'thunder':    playThunder();     break;
           case 'wind':       playWind();        break;
           case 'whoosh':     playWhoosh();      break;
+          case 'landing':    playLanding();     break;
         }
       } catch(e) {}
     },

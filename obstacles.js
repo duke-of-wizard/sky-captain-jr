@@ -42,6 +42,20 @@ class Obstacle {
 
   draw(ctx) {}
 
+  // Bright pulsing red/orange outline glow for damaging obstacles
+  drawDangerGlow(ctx) {
+    if (this.x > CANVAS_W) return; // not visible yet
+    const pulse = 0.5 + 0.3 * Math.sin(Date.now() * 0.006);
+    ctx.save();
+    ctx.shadowColor = '#FF4400';
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = `rgba(255,80,40,${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
   // Draw a warning arrow on right edge when obstacle is off screen
   drawWarning(ctx) {
     if (this.x > CANVAS_W + 30) {
@@ -75,7 +89,7 @@ class BirdFlock extends Obstacle {
         oy: Math.floor(i / 5) * 18 - 10 + (Math.random() - 0.5) * 10,
         wingPhase: Math.random() * Math.PI * 2,
         wingSpeed: 5 + Math.random() * 3,
-        size: 7 + Math.random() * 4
+        size: 11 + Math.random() * 5
       });
     }
   }
@@ -88,22 +102,13 @@ class BirdFlock extends Obstacle {
 
   draw(ctx) {
     this.drawWarning(ctx);
+    this.drawDangerGlow(ctx);
     ctx.save();
     ctx.translate(this.x + this.width * 0.5, this.y + this.height * 0.5);
 
-    // Danger indicator: red pulsing glow behind obstacle
-    const dangerPulse = 0.18 + 0.12 * Math.sin(Date.now() * 0.005);
-    const dangerGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, this.width * 0.55);
-    dangerGrad.addColorStop(0, `rgba(255,60,60,${dangerPulse})`);
-    dangerGrad.addColorStop(1, 'rgba(255,60,60,0)');
-    ctx.beginPath();
-    ctx.arc(0, 0, this.width * 0.55, 0, Math.PI * 2);
-    ctx.fillStyle = dangerGrad;
-    ctx.fill();
-
     // Danger label
-    ctx.font = 'bold 11px Arial';
-    ctx.fillStyle = `rgba(255,80,80,${0.6 + 0.3 * Math.sin(Date.now() * 0.004)})`;
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = `rgba(255,80,80,${0.8 + 0.2 * Math.sin(Date.now() * 0.004)})`;
     ctx.textAlign = 'center';
     ctx.fillText('⚠ BIRDS', 0, -this.height * 0.45);
     ctx.textAlign = 'left';
@@ -112,17 +117,22 @@ class BirdFlock extends Obstacle {
       ctx.save();
       ctx.translate(b.ox, b.oy);
       const wing = Math.sin(b.wingPhase) * 0.45;
-      // Simple M-shape bird
+      // M-shape bird
       ctx.beginPath();
       ctx.moveTo(-b.size, 0);
       ctx.lineTo(-b.size * 0.4, -b.size * wing);
       ctx.lineTo(0, 0);
       ctx.lineTo(b.size * 0.4, -b.size * wing);
       ctx.lineTo(b.size, 0);
-      ctx.strokeStyle = '#222';
-      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
       ctx.lineJoin = 'round';
       ctx.stroke();
+      // Body dot
+      ctx.beginPath();
+      ctx.arc(0, 0, b.size * 0.25, 0, Math.PI * 2);
+      ctx.fillStyle = '#111';
+      ctx.fill();
       ctx.restore();
     });
     ctx.restore();
@@ -133,8 +143,8 @@ class BirdFlock extends Obstacle {
 
 class StormCloud extends Obstacle {
   constructor(x, y) {
-    const w = 200 + Math.random() * 80;
-    const h = 130 + Math.random() * 50;
+    const w = 140 + Math.random() * 60;
+    const h = 90 + Math.random() * 40;
     super('storm', x, y, w, h, 18);
     this.lightningTimer = 1.5 + Math.random() * 2;
     this.lightningFlash = false;
@@ -150,7 +160,7 @@ class StormCloud extends Obstacle {
       puffs.push({
         ox: Math.random() * 0.9,
         oy: Math.random() * 0.55,
-        r:  (28 + Math.random() * 38)
+        r:  (20 + Math.random() * 28)
       });
     }
     return puffs;
@@ -191,24 +201,16 @@ class StormCloud extends Obstacle {
 
   draw(ctx) {
     this.drawWarning(ctx);
+    this.drawDangerGlow(ctx);
     ctx.save();
     ctx.translate(this.x, this.y);
 
-    // Danger indicator: red pulsing border
-    const dangerPulse = 0.2 + 0.15 * Math.sin(Date.now() * 0.005);
-    ctx.save();
-    ctx.strokeStyle = `rgba(255,60,60,${dangerPulse})`;
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 4]);
-    ctx.strokeRect(-5, -5, this.width + 10, this.height + 10);
-    ctx.setLineDash([]);
     // Danger label
-    ctx.font = 'bold 12px Arial';
-    ctx.fillStyle = `rgba(255,80,80,${0.7 + 0.3 * Math.sin(Date.now() * 0.004)})`;
+    ctx.font = 'bold 15px Arial';
+    ctx.fillStyle = `rgba(255,80,80,${0.8 + 0.2 * Math.sin(Date.now() * 0.004)})`;
     ctx.textAlign = 'center';
     ctx.fillText('⚠ STORM', this.width * 0.5, -8);
     ctx.textAlign = 'left';
-    ctx.restore();
 
     // Cloud puffs
     this.puffs.forEach(p => {
@@ -281,20 +283,12 @@ class OtherPlane extends Obstacle {
 
   draw(ctx) {
     this.drawWarning(ctx);
+    this.drawDangerGlow(ctx);
 
-    // Danger indicator
-    const dangerPulse = 0.18 + 0.12 * Math.sin(Date.now() * 0.005);
     const cx = this.x + this.width * 0.5, cy = this.y + this.height * 0.5;
-    const dg = ctx.createRadialGradient(cx, cy, 20, cx, cy, this.width * 0.5);
-    dg.addColorStop(0, `rgba(255,60,60,${dangerPulse})`);
-    dg.addColorStop(1, 'rgba(255,60,60,0)');
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, this.width * 0.5, 0, Math.PI * 2);
-    ctx.fillStyle = dg;
-    ctx.fill();
-    ctx.font = 'bold 11px Arial';
-    ctx.fillStyle = `rgba(255,80,80,${0.6 + 0.3 * Math.sin(Date.now() * 0.004)})`;
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = `rgba(255,80,80,${0.8 + 0.2 * Math.sin(Date.now() * 0.004)})`;
     ctx.textAlign = 'center';
     ctx.fillText('⚠ TRAFFIC', cx, cy - this.height * 0.55);
     ctx.textAlign = 'left';
@@ -515,9 +509,17 @@ class ObstacleSpawner {
     this.puSpawnTimer = 3.0;
     this.minGap       = { easy: 3.2, medium: 2.0, hard: 1.2 }[difficulty] || 2.0;
     this.densityMult  = { easy: 0.55, medium: 1.0, hard: 1.75 }[difficulty] || 1.0;
+    this.stopSpawning = false;
   }
 
   update(dt) {
+    if (this.stopSpawning) {
+      this.obstacles = this.obstacles.filter(o => o.active);
+      this.powerups  = this.powerups.filter(p => !p.collected);
+      this.obstacles.forEach(o => o.update(dt));
+      this.powerups.forEach(p => p.update(dt));
+      return;
+    }
     this.spawnTimer   -= dt;
     this.puSpawnTimer -= dt;
 

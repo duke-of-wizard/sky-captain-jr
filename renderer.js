@@ -120,6 +120,7 @@ const Renderer = {
       case 'plane_select': _drawPlaneSelect();  break;
       case 'difficulty':   _drawDifficulty();   break;
       case 'game':         _drawGame();         break;
+      case 'landing':      _drawGame(); _drawLandingOverlay(); break;
       case 'pause':        _drawGame(); _drawPause(); break;
       case 'win':          _drawGame(); _drawWin();   break;
       case 'lose':         _drawGame(); _drawLose();  break;
@@ -180,6 +181,11 @@ function _drawGame() {
   // Layer 6: Mid clouds (after terrain, before obstacles)
   _drawCloudsLayer(MID_CLOUDS, offsets.far_clouds ? offsets.far_clouds * 1.4 : 0, 0.55, 'rgba(215,225,240,');
 
+  // Layer 6.5: Runway (during landing phase)
+  if (window.game && game.state === 'landing') {
+    _drawRunway();
+  }
+
   // Layer 7: Obstacles + power-ups
   if (window.spawner) {
     for (const obs of window.spawner.obstacles) {
@@ -198,6 +204,13 @@ function _drawGame() {
 
   // Layer 10: Vignette overlay
   _drawVignette();
+
+  // Layer 10.5: Hit flash overlay
+  if (window.game && game.hitFlashTimer > 0) {
+    const flashAlpha = Math.min(0.4, game.hitFlashTimer * 1.2);
+    ctx.fillStyle = `rgba(255,0,0,${flashAlpha})`;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  }
 
   // Layer 11: HUD
   HUD.draw(ctx);
@@ -482,7 +495,7 @@ function _drawParticles() {
 
 function _drawPlayerPlane() {
   if (!window.player || !window.game) return;
-  if (game.state !== 'game' && game.state !== 'pause' && game.state !== 'win' && game.state !== 'lose') return;
+  if (game.state !== 'game' && game.state !== 'landing' && game.state !== 'pause' && game.state !== 'win' && game.state !== 'lose') return;
 
   // Invincibility flash (blink every 8 frames)
   if (game.invincible && (Math.floor(Date.now() / 90) % 2 === 0)) return;
@@ -721,6 +734,152 @@ function _drawIntro() {
   ctx.textAlign = 'left';
 }
 
+// ── RUNWAY & LANDING OVERLAY ───────────────────────────────────────────────
+
+function _drawRunway() {
+  if (!window.game || !window.currentLevel) return;
+
+  const ry = CANVAS_H * 0.78;
+  const rh = CANVAS_H * 0.10;
+  const scrollOff = game.runwayScrollX || 0;
+
+  // Runway strip
+  ctx.fillStyle = '#555';
+  ctx.fillRect(0, ry, CANVAS_W, rh);
+
+  // Edge lines
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, ry); ctx.lineTo(CANVAS_W, ry);
+  ctx.moveTo(0, ry + rh); ctx.lineTo(CANVAS_W, ry + rh);
+  ctx.stroke();
+
+  // Dashed center line
+  ctx.setLineDash([30, 30]);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  const lineY = ry + rh * 0.5;
+  ctx.moveTo(-60 - (scrollOff % 60), lineY);
+  ctx.lineTo(CANVAS_W + 60, lineY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Threshold markings (left side)
+  ctx.fillStyle = '#fff';
+  const threshX = 20 - (scrollOff % 400);
+  for (let tx = threshX; tx < CANVAS_W; tx += 400) {
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(tx, ry + 8 + i * 14, 40, 8);
+    }
+  }
+
+  // Landing progress and target zone
+  const landingStart = currentLevel.totalLength - 2500;
+  const landingProgress = (scroll.worldX - landingStart) / 2500;
+
+  // Target zone (green highlight)
+  const tzLeft  = CANVAS_W * (0.3 + (0.4 - landingProgress) * 1.2);
+  const tzRight = CANVAS_W * (0.3 + (0.7 - landingProgress) * 1.2);
+  if (tzRight > 0 && tzLeft < CANVAS_W) {
+    const zl = Math.max(0, tzLeft);
+    const zr = Math.min(CANVAS_W, tzRight);
+    ctx.fillStyle = 'rgba(76,175,80,0.35)';
+    ctx.fillRect(zl, ry + 2, zr - zl, rh - 4);
+    ctx.strokeStyle = '#4CAF50';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(zl, ry + 2, zr - zl, rh - 4);
+
+    // Label
+    const labelX = (zl + zr) * 0.5;
+    if (labelX > 30 && labelX < CANVAS_W - 30) {
+      ctx.font = 'bold 14px Arial';
+      ctx.fillStyle = '#4CAF50';
+      ctx.textAlign = 'center';
+      ctx.fillText('TOUCHDOWN ZONE', labelX, ry + rh * 0.5 + 5);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // Airport code
+  const levelName = currentLevel.name || '';
+  const arrCode = levelName.includes('→') ? levelName.split('→')[1].trim() : '';
+  if (arrCode) {
+    ctx.font = 'bold 28px Arial';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText(arrCode, CANVAS_W * 0.85, ry + rh * 0.5 + 10);
+    ctx.textAlign = 'left';
+  }
+}
+
+function _drawLandingOverlay() {
+  if (!window.game || !window.player) return;
+
+  const ry = CANVAS_H * 0.78;
+
+  // "PREPARE FOR LANDING" banner (first 2 seconds)
+  if (game.landingTimer < 2.0) {
+    const bannerAlpha = Math.min(1, (2.0 - game.landingTimer) * 1.5);
+    ctx.save();
+    ctx.globalAlpha = bannerAlpha;
+    ctx.font = 'bold 36px Arial';
+    ctx.fillStyle = '#FFD700';
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 15;
+    ctx.textAlign = 'center';
+    ctx.fillText('PREPARE FOR LANDING', CANVAS_W * 0.5, 60);
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  // Altitude indicator bar (left side)
+  const barX = 25, barTop = 100, barBot = ry - 10;
+  const barH = barBot - barTop;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(barX - 3, barTop, 10, barH);
+
+  // Player position on altitude bar
+  const altFrac = (player.y - 28) / (ry - 28);
+  const markerY = barTop + altFrac * barH;
+  ctx.fillStyle = altFrac > 0.85 ? '#4CAF50' : '#FFD700';
+  ctx.beginPath();
+  ctx.moveTo(barX + 10, markerY);
+  ctx.lineTo(barX + 22, markerY - 6);
+  ctx.lineTo(barX + 22, markerY + 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // ALT label
+  ctx.font = 'bold 10px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.textAlign = 'center';
+  ctx.fillText('ALT', barX + 2, barTop - 6);
+  ctx.textAlign = 'left';
+
+  // Runway level marker on bar
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(barX - 5, barBot - 2, 14, 4);
+
+  // Descent guidance arrow (if player is too high)
+  if (player.y < ry - 100) {
+    const arrowPulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.006);
+    ctx.save();
+    ctx.globalAlpha = arrowPulse;
+    ctx.fillStyle = '#4CAF50';
+    const ax = player.x + 40, ay = player.y + 30;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - 10, ay - 18);
+    ctx.lineTo(ax + 10, ay - 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 // ── PLANE SELECT ───────────────────────────────────────────────────────────
 
 function _drawPlaneSelect() {
@@ -745,20 +904,19 @@ function _drawPlaneSelect() {
 
   // Airline cards: 4 per row
   const keys = AIRLINE_KEYS;
-  const cw = 175, ch = 205, gap = 16;
-  const row1Y = 130;
-  const row2Y = row1Y + ch + 24;
+  const cw = 175, ch = 175, gap = 14;
+  const row1Y = 115;
   const perRow = 4;
 
   _UI.planeCards = [];
   keys.forEach((key, i) => {
     const col = i % perRow;
     const row = Math.floor(i / perRow);
-    const countInRow = row === 0 ? Math.min(perRow, keys.length) : keys.length - perRow;
+    const countInRow = Math.min(perRow, keys.length - row * perRow);
     const rowW = countInRow * cw + (countInRow - 1) * gap;
     const rowStartX = (CANVAS_W - rowW) * 0.5;
     const cx = rowStartX + col * (cw + gap);
-    const cy = row === 0 ? row1Y : row2Y;
+    const cy = row1Y + row * (ch + 14);
     const selected = window.game && game.selectedAirline === key;
     const hovered = _isHovered(cx, cy, cw, ch);
 
@@ -925,7 +1083,8 @@ function _drawWin() {
       { label: 'Flight Score', val: sd.base || 0 },
       { label: 'Perfect Bonus', val: sd.perfect || 0 },
       { label: 'Fuel Bonus', val: sd.fuel || 0 },
-      { label: 'Happy Passengers', val: sd.happy || 0 }
+      { label: 'Happy Passengers', val: sd.happy || 0 },
+      { label: 'Landing Bonus', val: sd.landing || 0 }
     ];
     let y = 270;
     ctx.font = '22px Arial';

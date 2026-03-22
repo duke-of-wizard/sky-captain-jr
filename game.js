@@ -7,11 +7,19 @@ const GameState = {
   PLANE_SELECT: 'plane_select',
   DIFFICULTY:   'difficulty',
   GAME:         'game',
+  LANDING:      'landing',
   PAUSE:        'pause',
   WIN:          'win',
   LOSE:         'lose',
   CUTSCENE:     'cutscene'
 };
+
+// Landing constants
+const LANDING_ZONE_LENGTH = 2500;
+const RUNWAY_Y  = CANVAS_H * 0.80;
+const RUNWAY_H  = CANVAS_H * 0.10;
+const TARGET_ZONE_START = 0.4;
+const TARGET_ZONE_END   = 0.7;
 
 var game = {
   state:          GameState.INTRO,
@@ -45,7 +53,14 @@ var game = {
   deltaTime:       0,
   lastTime:        0,
   paused:          false,
-  soundEnabled:    true
+  soundEnabled:    true,
+  hitFlashTimer:   0,
+  landingPhase:    false,
+  landingTimer:    0,
+  landingSuccess:  false,
+  landingScore:    0,
+  runwayScrollX:   0,
+  touchdownY:      0
 };
 
 // ── Player object ──────────────────────────────────────────────────────────
@@ -124,7 +139,7 @@ function gameLoop(timestamp) {
   game.deltaTime = Math.min((timestamp - game.lastTime) / 1000, 0.05);
   game.lastTime  = timestamp;
 
-  if (game.state === GameState.GAME && !game.paused) {
+  if ((game.state === GameState.GAME || game.state === GameState.LANDING) && !game.paused) {
     update(game.deltaTime);
   }
 
@@ -149,7 +164,9 @@ function update(dt) {
   _updateInvincibility(dt);
   _updateFloatingTexts(dt);
   _updateBanner(dt);
+  if (game.hitFlashTimer > 0) game.hitFlashTimer -= dt;
   _checkLevelComplete();
+  _updateLanding(dt);
 }
 
 // ── Scroll ─────────────────────────────────────────────────────────────────
@@ -166,30 +183,31 @@ function _updateScroll(dt) {
 // ── Player physics ─────────────────────────────────────────────────────────
 
 function _updatePlayer(dt) {
-  const thrustUp = 580;
+  const thrustUp = 750;
   const maxVy    = 460;
   const gravity  = 100;
 
   if (Input.isUp())   player.vy -= thrustUp * dt;
-  if (Input.isDown()) player.vy += thrustUp * 0.62 * dt;
+  if (Input.isDown()) player.vy += thrustUp * 0.80 * dt;
   player.vy += gravity * dt;
 
-  if      (Input.isLeft())  player.vx = lerp(player.vx, -145, dt * 7);
-  else if (Input.isRight()) player.vx = lerp(player.vx,  280, dt * 7);
-  else                      player.vx = lerp(player.vx,    0, dt * 9);
+  if      (Input.isLeft())  player.vx = lerp(player.vx, -200, dt * 10);
+  else if (Input.isRight()) player.vx = lerp(player.vx,  350, dt * 10);
+  else                      player.vx = lerp(player.vx,    0, dt * 12);
 
   player.vy = clamp(player.vy, -maxVy, maxVy);
-  player.vx = clamp(player.vx, -175, 320);
+  player.vx = clamp(player.vx, -230, 390);
 
   player.x = clamp(player.x + player.vx * dt, 55, CANVAS_W * 0.65);
-  player.y = clamp(player.y + player.vy * dt, 28, CANVAS_H * 0.82);
+  const maxY = (game.state === GameState.LANDING) ? RUNWAY_Y + 5 : CANVAS_H * 0.82;
+  player.y = clamp(player.y + player.vy * dt, 28, maxY);
 
   // Visual bank angle
   const targetBank = clamp(player.vy / maxVy * 0.32, -0.32, 0.22);
   player.bank = lerp(player.bank, targetBank, dt * 5.5);
 
   // Drag
-  player.vy *= Math.pow(0.86, dt * 60);
+  player.vy *= Math.pow(0.82, dt * 60);
 
   // Engine exhaust particles
   player.exhaustTimer += dt;
@@ -429,8 +447,70 @@ function _updateInvincibility(dt) {
 
 function _checkLevelComplete() {
   if (!currentLevel || game.levelComplete) return;
-  if (scroll.worldX >= currentLevel.totalLength) {
+
+  const landingStart = currentLevel.totalLength - LANDING_ZONE_LENGTH;
+
+  // Trigger landing phase
+  if (scroll.worldX >= landingStart && game.state === GameState.GAME) {
+    game.landingPhase = true;
+    setState(GameState.LANDING);
+    game.landingTimer = 0;
+    game.landingSuccess = false;
+    game.runwayScrollX = 0;
+    copilotSay('Prepare for landing!', 'excited', 3.0);
+    Audio.play('checkpoint');
+    if (spawner) spawner.stopSpawning = true;
+  }
+
+  // Fly past entire zone = auto-complete with default score
+  if (scroll.worldX >= currentLevel.totalLength && !game.landingSuccess) {
+    game.landingSuccess = true;
+    game.landingScore = 50;
     game.levelComplete = true;
+    copilotSay('Landed! Nice try!', 'happy', 3.0);
+    _completeLevelSuccess();
+  }
+}
+
+function _updateLanding(dt) {
+  if (game.state !== GameState.LANDING) return;
+
+  game.landingTimer += dt;
+  game.runwayScrollX += (currentLevel ? currentLevel.scrollSpeed : 180) * dt;
+
+  // Calculate landing progress (0 to 1)
+  const landingStart = currentLevel.totalLength - LANDING_ZONE_LENGTH;
+  const landingProgress = (scroll.worldX - landingStart) / LANDING_ZONE_LENGTH;
+
+  // Check if player reached runway level within target zone
+  if (player.y >= RUNWAY_Y - 10 &&
+      landingProgress >= TARGET_ZONE_START &&
+      landingProgress <= TARGET_ZONE_END) {
+    game.landingSuccess = true;
+    game.touchdownY = player.y;
+
+    // Score based on centering in target zone
+    const zoneMid = (TARGET_ZONE_START + TARGET_ZONE_END) / 2;
+    const distFromCenter = Math.abs(landingProgress - zoneMid) / ((TARGET_ZONE_END - TARGET_ZONE_START) / 2);
+    game.landingScore = Math.round(100 * (1 - distFromCenter));
+    game.levelComplete = true;
+
+    Audio.play('landing');
+    copilotSay('Perfect landing! You\'re a real captain!', 'excited', 4.0);
+
+    // Tire smoke particles
+    for (let i = 0; i < 20; i++) {
+      game.particles.push({
+        x: player.x - 20 + Math.random() * 40,
+        y: RUNWAY_Y,
+        vx: -30 + Math.random() * 60,
+        vy: -15 - Math.random() * 30,
+        life: 0.8, decay: 1.2, size: 5 + Math.random() * 8,
+        gravity: -5, shrink: 0.96,
+        color: 'rgba(180,180,180,0.6)'
+      });
+    }
+
     _completeLevelSuccess();
   }
 }
@@ -442,13 +522,15 @@ function _completeLevelSuccess() {
   const perfectBonus = game.hadCrash ? 0 : 1000;
   const fuelBonus    = Math.floor(game.fuel * 3);
   const happyBonus   = Math.max(0, Math.floor((game.happiness - 50) * 5));
+  const landingBonus = game.landingScore ? Math.floor(game.landingScore * 5) : 0;
 
   game.scoreDetails = {
     base:    Math.floor(game.score),
     perfect: perfectBonus,
     fuel:    fuelBonus,
     happy:   happyBonus,
-    total:   Math.floor(game.score) + perfectBonus + fuelBonus + happyBonus
+    landing: landingBonus,
+    total:   Math.floor(game.score) + perfectBonus + fuelBonus + happyBonus + landingBonus
   };
   game.score = game.scoreDetails.total;
 
@@ -482,6 +564,7 @@ function loseLife() {
 
   Audio.play('crash');
   Renderer.triggerShake(0.55, 11);
+  game.hitFlashTimer = 0.35;
   _emitExplosion(player.x, player.y);
 
   if (game.lives <= 0) {
@@ -523,7 +606,7 @@ function setState(newState) {
   const controls = document.getElementById('controls');
   const soundBtn = document.getElementById('btn-sound');
 
-  if (newState === GameState.GAME) {
+  if (newState === GameState.GAME || newState === GameState.LANDING) {
     controls.style.display = 'grid';
     soundBtn.style.display = 'block';
     game.paused = false;
@@ -534,13 +617,14 @@ function setState(newState) {
 }
 
 function togglePause() {
-  if (game.state === GameState.GAME) {
+  if (game.state === GameState.GAME || game.state === GameState.LANDING) {
     game.paused = true;
+    game._prePauseState = game.state;
     setState(GameState.PAUSE);
     Audio.stopEngine();
   } else if (game.state === GameState.PAUSE) {
     game.paused = false;
-    setState(GameState.GAME);
+    setState(game._prePauseState || GameState.GAME);
     Audio.startEngine();
   }
 }
@@ -585,8 +669,15 @@ function _startLevel() {
   game.checkpoint   = null;
   game.bannerText   = '';
   game.bannerTimer  = 0;
-  game.copilotMsg   = '';
-  game.copilotTimer = 0;
+  game.copilotMsg      = '';
+  game.copilotTimer    = 0;
+  game.hitFlashTimer   = 0;
+  game.landingPhase    = false;
+  game.landingTimer    = 0;
+  game.landingSuccess  = false;
+  game.landingScore    = 0;
+  game.runwayScrollX   = 0;
+  game.touchdownY      = 0;
 
   // Set up checkpoints at 25%, 50%, 75%
   game.checkpoints = [
