@@ -116,6 +116,62 @@ const AIRLINES = {
     tailColor: '#83003E',
     engineColor: '#888',
     accentColor: '#FF9933'
+  },
+  qantas: {
+    key: 'qantas',
+    name: 'Qantas',
+    tagline: 'The Spirit of Australia',
+    cardBg: ['#E8112D', '#8B0000'],
+    fuselageTop: '#f8f8f8',
+    fuselageMid: '#eeeeee',
+    fuselageBot: '#cccccc',
+    wingTop: '#d8d8d8',
+    wingBot: '#909090',
+    tailColor: '#E8112D',
+    engineColor: '#888',
+    accentColor: '#ffffff'
+  },
+  airnz: {
+    key: 'airnz',
+    name: 'Air New Zealand',
+    tagline: 'Kia Ora from Aotearoa',
+    cardBg: ['#1A1A2E', '#00002B'],
+    fuselageTop: '#1a1a2e',
+    fuselageMid: '#111122',
+    fuselageBot: '#0a0a1a',
+    wingTop: '#222244',
+    wingBot: '#111133',
+    tailColor: '#00002B',
+    engineColor: '#555',
+    accentColor: '#00A1DE'
+  },
+  emirates: {
+    key: 'emirates',
+    name: 'Emirates',
+    tagline: 'Hello Tomorrow',
+    cardBg: ['#C8102E', '#7A0019'],
+    fuselageTop: '#f8f8f8',
+    fuselageMid: '#eeeeee',
+    fuselageBot: '#dddddd',
+    wingTop: '#d8d8d8',
+    wingBot: '#909090',
+    tailColor: '#C8102E',
+    engineColor: '#888',
+    accentColor: '#C8A000'
+  },
+  lufthansa: {
+    key: 'lufthansa',
+    name: 'Lufthansa',
+    tagline: "There's No Better Way to Fly",
+    cardBg: ['#05164D', '#02093A'],
+    fuselageTop: '#f5f5f5',
+    fuselageMid: '#e8e8e8',
+    fuselageBot: '#cccccc',
+    wingTop: '#d5d5d5',
+    wingBot: '#888888',
+    tailColor: '#05164D',
+    engineColor: '#888',
+    accentColor: '#F9BA00'
   }
 };
 
@@ -407,6 +463,10 @@ function _drawLivery(ctx, al) {
     case 'jetblue':    _liveryJetBlue(ctx, al);    break;
     case 'hawaiian':   _liveryHawaiian(ctx, al);   break;
     case 'airIndia':   _liveryAirIndia(ctx, al);   break;
+    case 'qantas':     _liveryQantas(ctx, al);     break;
+    case 'airnz':      _liveryAirNZ(ctx, al);      break;
+    case 'emirates':   _liveryEmirates(ctx, al);   break;
+    case 'lufthansa':  _liveryLufthansa(ctx, al);  break;
   }
   ctx.restore();
 }
@@ -515,6 +575,40 @@ function _liveryAirIndia(ctx, al) {
   ctx.fillStyle = al.tailColor;
   ctx.font = 'bold 12px Arial';
   ctx.fillText('AIR INDIA', -36, -2);
+}
+
+function _liveryQantas(ctx, al) {
+  ctx.fillStyle = al.tailColor;
+  ctx.fillRect(-120, 3, 246, 10);
+  ctx.fillStyle = al.tailColor;
+  ctx.font = 'bold 13px Arial';
+  ctx.fillText('QANTAS', -22, -3);
+}
+
+function _liveryAirNZ(ctx, al) {
+  ctx.fillStyle = al.accentColor;
+  ctx.fillRect(-120, -13, 246, 4);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('AIR NEW ZEALAND', -52, 2);
+}
+
+function _liveryEmirates(ctx, al) {
+  ctx.fillStyle = al.accentColor;
+  ctx.fillRect(-120, -13, 246, 5);
+  ctx.fillStyle = al.tailColor;
+  ctx.fillRect(-120, 5, 246, 9);
+  ctx.fillStyle = al.accentColor;
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('EMIRATES', -30, -2);
+}
+
+function _liveryLufthansa(ctx, al) {
+  ctx.fillStyle = al.accentColor;
+  ctx.fillRect(-120, -12, 246, 6);
+  ctx.fillStyle = al.tailColor;
+  ctx.font = 'italic bold 13px Georgia';
+  ctx.fillText('Lufthansa', -30, 5);
 }
 
 function _drawTailLogo(ctx, al) {
@@ -642,6 +736,82 @@ function _drawTailLogo(ctx, al) {
       ctx.arc(0, 0, ts * 0.12, 0, Math.PI * 2);
       ctx.fillStyle = al.accentColor;
       ctx.fill();
+      break;
+    }
+    case 'qantas': {
+      // White kangaroo silhouette
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ts * 0.45, ts * 0.28, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(ts * 0.35, -ts * 0.35, ts * 0.18, ts * 0.14, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-ts * 0.45, ts * 0.1);
+      ctx.bezierCurveTo(-ts * 0.7, ts * 0.3, -ts * 0.6, ts * 0.6, -ts * 0.3, ts * 0.55);
+      ctx.lineTo(-ts * 0.25, ts * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'airnz': {
+      // Teal koru (spiral fern)
+      ctx.strokeStyle = al.accentColor;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.6, Math.PI * 0.5, Math.PI * 2.2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(ts * 0.1, ts * 0.1, ts * 0.3, Math.PI * 0.5, Math.PI * 2.2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(ts * 0.18, ts * 0.18, ts * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = al.accentColor;
+      ctx.fill();
+      break;
+    }
+    case 'emirates': {
+      // Gold "ek" in a circle
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.7, 0, Math.PI * 2);
+      ctx.strokeStyle = al.accentColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = al.accentColor;
+      ctx.font = `bold ${ts * 0.65}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ek', 0, 0);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      break;
+    }
+    case 'lufthansa': {
+      // Yellow circle with crane silhouette
+      ctx.beginPath();
+      ctx.arc(0, 0, ts * 0.72, 0, Math.PI * 2);
+      ctx.fillStyle = al.accentColor;
+      ctx.fill();
+      ctx.strokeStyle = al.tailColor;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = al.tailColor;
+      ctx.beginPath();
+      ctx.ellipse(0, ts * 0.05, ts * 0.38, ts * 0.13, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-ts * 0.2, -ts * 0.05);
+      ctx.lineTo(-ts * 0.6, -ts * 0.35);
+      ctx.lineTo(-ts * 0.3, ts * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(ts * 0.25, -ts * 0.05);
+      ctx.quadraticCurveTo(ts * 0.45, -ts * 0.4, ts * 0.3, -ts * 0.58);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = al.tailColor;
+      ctx.stroke();
       break;
     }
   }

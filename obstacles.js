@@ -554,14 +554,38 @@ class ObstacleSpawner {
       case 'wind':       obs = new WindGust(x, y);    break;
       default:           obs = new BirdFlock(x, y);
     }
+    // Nudge obstacle Y if it would swallow an existing powerup
+    const obsMgn = 24;
+    const puBlocked = this.powerups.some(pu => {
+      if (pu.collected || pu.x < CANVAS_W * 0.3) return false;
+      return (pu.y + pu.radius + obsMgn) > obs.y &&
+             (pu.y - pu.radius - obsMgn) < (obs.y + obs.height);
+    });
+    if (puBlocked) {
+      obs.y = (obs.y < CANVAS_H * 0.4)
+        ? Math.min(CANVAS_H * 0.65 - obs.height, obs.y + obs.height + obsMgn * 2)
+        : Math.max(50, obs.y - obs.height - obsMgn * 2);
+    }
     this.obstacles.push(obs);
   }
 
   _spawnPowerUp() {
-    const types  = ['star', 'star', 'fuel', 'shield', 'life'];
-    const type   = types[Math.floor(Math.random() * types.length)];
-    const x      = CANVAS_W + 40;
-    const y      = 70 + Math.random() * (CANVAS_H * 0.65 - 70);
+    const types    = ['star', 'star', 'fuel', 'shield', 'life'];
+    const type     = types[Math.floor(Math.random() * types.length)];
+    const x        = CANVAS_W + 40;
+    const puRadius = 26;
+    const margin   = 20;
+
+    let y;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      y = 70 + Math.random() * (CANVAS_H * 0.65 - 70);
+      const overlaps = this.obstacles.some(obs => {
+        if (!obs.active || obs.x < CANVAS_W * 0.3) return false;
+        return (y + puRadius + margin) > obs.y &&
+               (y - puRadius - margin) < (obs.y + obs.height);
+      });
+      if (!overlaps) break;
+    }
     this.powerups.push(new PowerUp(type, x, y));
   }
 
